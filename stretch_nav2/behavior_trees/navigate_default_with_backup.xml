@@ -1,0 +1,46 @@
+
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+   [원본 백업 / INACTIVE]  후진(BackUp) + 회전(Spin) 이 "있는" 원래 nav2 기본 복구 BT.
+    · nav2 기본(navigate_to_pose_w_replanning_and_recovery.xml)의 그대로 복사본.
+    · 지금은 사용 안 함. 현재 활성 = navigate_no_backup.xml (후진·회전 제거판).
+    · 후진·회전을 되살리려면: nav2_params_human.yaml 의 default_nav_to_pose_bt_xml
+      를 이 파일 경로로 바꾸면 됨 (또는 default_*_bt_xml 2줄을 지워 nav2 기본으로).
+    · 복구행동 RoundRobin: 코스트맵초기화 → Spin(회전) → Wait → BackUp(후진)
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+<!--
+  This Behavior Tree replans the global path periodically at 1 Hz and it also has
+  recovery actions specific to planning / control as well as general system issues.
+  This will be continuous if a kinematically valid planner is selected.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <RecoveryNode number_of_retries="6" name="NavigateRecovery">
+      <PipelineSequence name="NavigateWithReplanning">
+        <RateController hz="1.0">
+          <RecoveryNode number_of_retries="1" name="ComputePathToPose">
+            <ComputePathToPose goal="{goal}" path="{path}" planner_id="GridBased"/>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </RecoveryNode>
+        </RateController>
+        <RecoveryNode number_of_retries="1" name="FollowPath">
+          <FollowPath path="{path}" controller_id="FollowPath"/>
+          <ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap"/>
+        </RecoveryNode>
+      </PipelineSequence>
+      <ReactiveFallback name="RecoveryFallback">
+        <GoalUpdated/>
+        <RoundRobin name="RecoveryActions">
+          <Sequence name="ClearingActions">
+            <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </Sequence>
+          <Spin spin_dist="1.57"/>
+          <Wait wait_duration="5"/>
+          <BackUp backup_dist="0.30" backup_speed="0.05"/>
+        </RoundRobin>
+      </ReactiveFallback>
+    </RecoveryNode>
+  </BehaviorTree>
+</root>

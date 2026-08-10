@@ -1,3 +1,11 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  ⭐ [현재 사용 중 / ACTIVE]  "사람이 뒤에서 잡고 가는" 버전
+#   · 런치(stretch_robot_process.launch.xml)의 params_file(사람 있음)이 이 파일을 로드.
+#   · footprint: 뒤로 0.9m 확장(뒤 사람을 로봇 몸으로 처리) / inflation 0.35 / cost 1.5
+#   · 복구 BT: behavior_trees/navigate_no_backup.xml  (후진 BackUp·회전 Spin 제거)
+#   · 후진·회전을 되살리려면 아래 default_*_bt_xml 두 줄을 지우면 nav2 기본 BT로 복귀.
+#   · 2026-08-10: BT 지정 2줄 추가.
+# ═══════════════════════════════════════════════════════════════════════════
 amcl:
   ros__parameters:
     use_sim_time: False
@@ -45,7 +53,10 @@ bt_navigator:
     global_frame: map
     robot_base_frame: base_link
     odom_topic: /odom
-    default_bt_xml_filename: "navigate_w_replanning_and_recovery.xml"
+    # 후진(BackUp) 제거한 커스텀 BT 사용 — 뒤에 사람이 잡고 이동하므로 후진 금지.
+    # Humble은 default_nav_to_pose_bt_xml 를 읽음 (default_bt_xml_filename 은 구버전 이름).
+    default_nav_to_pose_bt_xml: "/home/hello-robot/ament_ws/src/stretch_ros2/stretch_nav2/behavior_trees/navigate_no_backup.xml"
+    default_bt_xml_filename: "/home/hello-robot/ament_ws/src/stretch_ros2/stretch_nav2/behavior_trees/navigate_no_backup.xml"
     bt_loop_duration: 10
     default_server_timeout: 20
     plugin_lib_names:

@@ -1,0 +1,37 @@
+<!--
+  [현재 활성] nav2_params_human.yaml 이 이 BT를 로드해서 사용 중.
+  navigate_to_pose_w_replanning_and_recovery.xml 기반 커스텀 BT.
+  변경점: 복구행동에서 <BackUp>(후진) + <Spin>(제자리회전) 노드 모두 제거.
+  이유: 뒤에 사람이 로봇을 잡고 이동하는 형태 +  뒤로 0.9m 뻗은 거대 footprint.
+        - 후진 = 뒤 사람에게 충돌
+        - 제자리회전 = 큰 footprint가 회전 중 벽에 걸림 → 회전 실패 루프
+        따라서 복구는 "안 움직이는 것"만: 코스트맵 초기화 → 대기(Wait) → 재계획.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <RecoveryNode number_of_retries="6" name="NavigateRecovery">
+      <PipelineSequence name="NavigateWithReplanning">
+        <RateController hz="1.0">
+          <RecoveryNode number_of_retries="1" name="ComputePathToPose">
+            <ComputePathToPose goal="{goal}" path="{path}" planner_id="GridBased"/>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </RecoveryNode>
+        </RateController>
+        <RecoveryNode number_of_retries="1" name="FollowPath">
+          <FollowPath path="{path}" controller_id="FollowPath"/>
+          <ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap"/>
+        </RecoveryNode>
+      </PipelineSequence>
+      <ReactiveFallback name="RecoveryFallback">
+        <GoalUpdated/>
+        <RoundRobin name="RecoveryActions">
+          <Sequence name="ClearingActions">
+            <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </Sequence>
+          <Wait wait_duration="5"/>
+        </RoundRobin>
+      </ReactiveFallback>
+    </RecoveryNode>
+  </BehaviorTree>
+</root>
