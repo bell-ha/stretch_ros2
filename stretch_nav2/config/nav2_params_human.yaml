@@ -127,7 +127,7 @@ controller_server:
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.10   # 정밀 도착 (0.30→0.10, 승차지점 등 위치 정확도 ↑)
+      xy_goal_tolerance: 0.05   # 정밀 도착 (0.30→0.10→0.05, 승차지점 등 위치 정확도 ↑)
       # 도착 시 목표 방향(z/w)까지 정렬 — 0.15rad(~8.6°) 이내. 엘리베이터
       # 탑승/하차처럼 방향이 중요한 목적지가 정확한 자세로 도착하게.
       # (2026-07-24: 기존 3.14=±180°는 방향을 완전히 무시했음)
@@ -160,7 +160,7 @@ controller_server:
       linear_granularity: 0.05
       angular_granularity: 0.025
       transform_tolerance: 0.2
-      xy_goal_tolerance: 0.10   # 정밀 도착 (0.30→0.10, 승차지점 등 위치 정확도 ↑)
+      xy_goal_tolerance: 0.05   # 정밀 도착 (0.30→0.10→0.05, 승차지점 등 위치 정확도 ↑)
       yaw_goal_tolerance: 0.15   # 목표 방향 정렬 (general_goal_checker와 일치)
       trans_stopped_velocity: 0.25
       short_circuit_trajectory_evaluation: True
