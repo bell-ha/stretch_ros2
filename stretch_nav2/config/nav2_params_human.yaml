@@ -122,16 +122,24 @@ controller_server:
     progress_checker:
       plugin: "nav2_controller::SimpleProgressChecker"
       required_movement_radius: 0.5
-      movement_time_allowance: 5.0
+      # 2026-09-04: 5.0 → 15.0. 마지막에 제자리 회전만 하는 동안에는
+      # required_movement_radius(0.5m)를 못 채워 '진행 없음'으로 취소된다.
+      # 방향 허용오차를 조인 만큼 회전 구간이 길어지므로 여유를 준다.
+      movement_time_allowance: 15.0
 
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.05   # 정밀 도착 (0.30→0.10→0.05, 승차지점 등 위치 정확도 ↑)
+      xy_goal_tolerance: 0.03   # 정밀 도착 (0.30→0.10→0.05→0.03, 2026-09-04)
       # 도착 시 목표 방향(z/w)까지 정렬 — 0.15rad(~8.6°) 이내. 엘리베이터
       # 탑승/하차처럼 방향이 중요한 목적지가 정확한 자세로 도착하게.
       # (2026-07-24: 기존 3.14=±180°는 방향을 완전히 무시했음)
-      yaw_goal_tolerance: 0.15
+      # 2026-09-04: 0.15rad(8.6°) → 0.05rad(2.9°). 팔이 base_link -y로만 뻗고
+      # 호출버튼까지 0.80m라 방향오차 1°가 팔 끝 횡오차 1.4cm가 된다.
+      # 실측 -8.7°는 Nav2 기준 정상 도착인데 팔 끝은 18.9cm 어긋났다. 2.9°면 4.0cm.
+      # (오케 제안은 0.03rad=1.7°였으나 AMCL yaw 잡음 수준이라 목표 근처에서
+      #  왕복하다 progress_checker 시간초과로 취소될 위험이 있어 0.05를 택함)
+      yaw_goal_tolerance: 0.05
 
     FollowPath:
       plugin: "dwb_core::DWBLocalPlanner"
@@ -160,8 +168,8 @@ controller_server:
       linear_granularity: 0.05
       angular_granularity: 0.025
       transform_tolerance: 0.2
-      xy_goal_tolerance: 0.05   # 정밀 도착 (0.30→0.10→0.05, 승차지점 등 위치 정확도 ↑)
-      yaw_goal_tolerance: 0.15   # 목표 방향 정렬 (general_goal_checker와 일치)
+      xy_goal_tolerance: 0.03   # 정밀 도착 (0.30→0.10→0.05→0.03, 2026-09-04)
+      yaw_goal_tolerance: 0.05   # 목표 방향 정렬 (general_goal_checker와 일치, 2026-09-04)
       trans_stopped_velocity: 0.25
       short_circuit_trajectory_evaluation: True
       stateful: True
