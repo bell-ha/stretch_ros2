@@ -1,0 +1,53 @@
+<!--
+  경유지 경로(NavigateThroughPoses)용 복구행동 커스텀 BT.
+  nav2 기본 navigate_through_poses_w_replanning_and_recovery.xml 기반.
+  변경점: 복구행동에서 <Spin>(제자리회전) + <BackUp>(후진) 노드 제거.
+
+  이유: navigate_no_backup.xml(= navigate_to_pose 용)과 **같다.**
+        시각장애인이 로봇 **뒤에서** 손잡이를 잡고 함께 걷는다(2026-10-14 사용자 확인).
+        - 후진(BackUp 0.30m) = 뒤 사람에게 그대로 충돌
+        - 제자리회전(Spin 1.57rad) = 뒤로 0.9m 뻗은 footprint 가 회전 중 벽에 걸림
+        따라서 복구는 "안 움직이는 것"만: 코스트맵 초기화 → 대기(Wait) → 재계획.
+
+  🔴 2026-10-14 에 이 파일이 생긴 경위:
+     e4d48f0 이 후진·회전을 뺀 것은 navigate_to_pose 쪽뿐이었고,
+     default_nav_through_poses_bt_xml 은 설정되지 않아 **nav2 기본 BT(후진 포함)**가
+     쓰이고 있었다. 지금까지 드러나지 않은 이유는 경유지 경로가 코스트맵 좌표계
+     버그로 **한 번도 실행된 적이 없었기** 때문이다(326ae76). 그 버그를 고치는 순간
+     이 구멍이 열린다.
+
+  ⚠ 이 파일은 yaml 이 아니라 **goal 의 behavior_tree 필드**로 지정한다
+     (navigation_client._send_to_nav2). 그래야 nav2 재시작 없이 적용된다.
+     경로를 옮기면 navigation_client 의 THROUGH_POSES_BT 도 같이 고칠 것.
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <RecoveryNode number_of_retries="6" name="NavigateRecovery">
+      <PipelineSequence name="NavigateWithReplanning">
+        <RateController hz="0.333">
+          <RecoveryNode number_of_retries="1" name="ComputePathThroughPoses">
+            <ReactiveSequence>
+              <RemovePassedGoals input_goals="{goals}" output_goals="{goals}" radius="0.7"/>
+              <ComputePathThroughPoses goals="{goals}" path="{path}" planner_id="GridBased"/>
+            </ReactiveSequence>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </RecoveryNode>
+        </RateController>
+        <RecoveryNode number_of_retries="1" name="FollowPath">
+          <FollowPath path="{path}" controller_id="FollowPath"/>
+          <ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap"/>
+        </RecoveryNode>
+      </PipelineSequence>
+      <ReactiveFallback name="RecoveryFallback">
+        <GoalUpdated/>
+        <RoundRobin name="RecoveryActions">
+          <Sequence name="ClearingActions">
+            <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </Sequence>
+          <Wait wait_duration="5"/>
+        </RoundRobin>
+      </ReactiveFallback>
+    </RecoveryNode>
+  </BehaviorTree>
+</root>
